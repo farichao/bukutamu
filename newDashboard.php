@@ -4,17 +4,38 @@ if (!isset($_SESSION['username'])) {
     header("Location: login.php?error=Silakan login dulu!");
     exit();
 }
+
 if (!empty($_SESSION['welcome_message'])) {
-    echo "<script> alert('".addslashes($_SESSION['welcome_message'])."');</script>";
+    echo "<script>alert('" . addslashes($_SESSION['welcome_message']) . "');</script>";
     unset($_SESSION['welcome_message']);
 }
+
+// Nama file untuk menyimpan data tamu
+$data_file = "data_tamu.txt";
+
+// Proses simpan data jika form dikirim
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['name'], $_POST['comment'], $_POST['email'])) {
+    $name = trim($_POST['name']);
+    $comment = trim($_POST['comment']);
+    $email = trim($_POST['email']);
+
+    if (!empty($name) && !empty($comment) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $timestamp = date("Y-m-d H:i:s");
+        $entry = "Waktu: $timestamp\nNama: $name\nKomentar: $comment\nEmail: $email\n---\n";
+        file_put_contents($data_file, $entry, FILE_APPEND);
+        $success_message = "Data berhasil disimpan!";
+    } else {
+        $error_message = "Harap isi semua data dengan benar.";
+    }
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Guest Book</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins&display=swap" rel="stylesheet">
     <style>
         body {
@@ -22,7 +43,7 @@ if (!empty($_SESSION['welcome_message'])) {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh; 
+            height: 100vh;
             margin: 0;
             position: relative;
             font-family: Arial, sans-serif;
@@ -47,7 +68,6 @@ if (!empty($_SESSION['welcome_message'])) {
             font-weight: bold;
             text-decoration: none;
             transition: 0.2s;
-            display: inline-block;
         }
 
         .logout-btn:hover {
@@ -107,13 +127,15 @@ if (!empty($_SESSION['welcome_message'])) {
         input[type="submit"]:hover {
             box-shadow: 0 8px 15px rgba(174, 119, 131, 0.6);
         }
+
         .comment-box {
-            background-color:rgb(174, 119, 131,0.2);
+            background-color: rgba(174, 119, 131, 0.2);
             padding: 10px;
             margin: 5px 0;
             border-radius: 5px;
             font-size: 16px;
             color: #6B0118;
+            white-space: pre-wrap;
         }
     </style>
 </head>
@@ -123,29 +145,38 @@ if (!empty($_SESSION['welcome_message'])) {
 
         <div class="box">
             <h2>Guest Book</h2>
-            <form onsubmit="event.preventDefault(); addComment();">
-                <input type="text" placeholder="Name" id="name" required>
-                <textarea placeholder="Comment" id="comment" required></textarea>
+            <form method="post" action="">
+                <input type="text" name="name" placeholder="Name" required>
+                <textarea name="comment" placeholder="Comment" required></textarea>
+                <input type="email" name="email" placeholder="Email" required>
                 <input type="submit" value="Send">
             </form>
+            <?php if (!empty($success_message)) : ?>
+                <p style="color: green;"><?= $success_message ?></p>
+            <?php elseif (!empty($error_message)) : ?>
+                <p style="color: red;"><?= $error_message ?></p>
+            <?php endif; ?>
         </div>
-        
-        <div class="box">
-            <h2>History Comment</h2>
-            <div id="comments"></div>
-        </div>
-    </div>
-    </div>
-    <script>
-        function addComment() {
-            let commentBox = document.createElement("div");
-            commentBox.className = "comment-box";
-            commentBox.textContent = `${document.getElementById("name").value}: ${document.getElementById("comment").value}`;
-            document.getElementById("comments").appendChild(commentBox);
-            document.getElementById("name").value = "";
-            document.getElementById("comment").value = "";
-        }
 
-    </script>
+        <div class="box">
+            <h2>History Input</h2>
+            <div id="comments">
+                <?php
+                if (file_exists($data_file)) {
+                    $entries = file($data_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                    foreach ($entries as $line) {
+                        if ($line === "---") {
+                            echo "<hr>";
+                        } else {
+                            echo "<div class='comment-box'>" . htmlspecialchars($line) . "</div>";
+                        }
+                    }
+                } else {
+                    echo "<p>Belum ada komentar.</p>";
+                }
+                ?>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
